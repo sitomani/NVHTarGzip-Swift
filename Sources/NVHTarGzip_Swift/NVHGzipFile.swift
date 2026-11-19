@@ -70,13 +70,12 @@ public class NVHGzipFile: NVHFile {
         outputStream.open()
         defer { outputStream.close() }
 
-        guard let sourceCString = sourcePath.cString(using: .ascii) else {
-            return .unknown
+        guard let sourceGzFile = sourcePath.withCString({
+            gzopen($0, "rb")
+        }) else {
+            return .decompressionFailed
         }
-
-        let mode = "rb".cString(using: .utf8)!
-
-        let sourceGzFile = gzopen(sourceCString, UnsafePointer(mode))
+        defer { _ = gzclose(sourceGzFile) }
 
         let bufferLength = 1024 * 256
         let buffer = UnsafeMutableRawPointer.allocate(byteCount: bufferLength, alignment: 8)
@@ -123,7 +122,6 @@ public class NVHGzipFile: NVHFile {
         }
 
         updateProgressVirtualCompletedUnitCountWithTotal()
-        _ = gzclose(sourceGzFile)
         return errorType
     }
 
