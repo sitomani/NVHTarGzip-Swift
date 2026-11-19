@@ -92,8 +92,25 @@ public class NVHGzipFile: NVHFile {
 
             if readBytes > 0 {
                 let data = Data(bytes: buffer, count: Int(readBytes))
-                let writtenBytes = outputStream.write(data.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }, maxLength: Int(readBytes))
-                if writtenBytes <= 0 {
+
+                let succeeded = data.withUnsafeBytes { rawBuffer -> Bool in
+                    let bytes = rawBuffer.bindMemory(to: UInt8.self)
+                    guard let baseAddress = bytes.baseAddress else { return false }
+
+                    var offset = 0
+                    while offset < bytes.count {
+                        let written = outputStream.write(
+                            baseAddress.advanced(by: offset),
+                            maxLength: bytes.count - offset
+                        )
+                        guard written > 0 else { return false }
+                        offset += written
+                    }
+
+                    return true
+                }
+
+                if !succeeded {
                     errorType = .decompressionFailed
                     break
                 }
